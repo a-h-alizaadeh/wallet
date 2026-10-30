@@ -9,10 +9,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -46,9 +48,9 @@ class MainActivity : ComponentActivity() {
                 val accountsState = remember { mutableStateOf<List<AccountEntity>>(emptyList()) }
                 val categoriesState = remember { mutableStateOf<List<CategoryEntity>>(emptyList()) }
                 val recordsState = remember { mutableStateOf<List<RecordEntity>>(emptyList()) }
+
                 var currentScreen by remember { mutableStateOf("HOME") }
                 var editingRecord by remember { mutableStateOf<RecordEntity?>(null) }
-                var editingCategory by remember { mutableStateOf<CategoryEntity?>(null) }
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
 
@@ -79,7 +81,8 @@ class MainActivity : ComponentActivity() {
                             )
                             Spacer(Modifier.height(12.dp))
                             Divider(color = Color(0xFF2A3146), thickness = 1.dp)
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(8.dp))
+
                             DrawerItem("Home", Icons.Default.Home) {
                                 scope.launch { drawerState.close() }
                                 currentScreen = "HOME"
@@ -92,6 +95,7 @@ class MainActivity : ComponentActivity() {
                                 scope.launch { drawerState.close() }
                                 currentScreen = "CATEGORIES"
                             }
+
                             Spacer(Modifier.weight(1f))
                             Divider(color = Color(0xFF2A3146), thickness = 1.dp)
                             Text(
@@ -111,7 +115,6 @@ class MainActivity : ComponentActivity() {
                                 expense = recordsState.value.filter { it.type == "EXPENSE" }.sumOf { it.amount },
                                 accounts = accountsState.value,
                                 records = recordsState.value.sortedByDescending { it.timestamp },
-                                categories = categoriesState.value,
                                 onOpenDrawer = { scope.launch { drawerState.open() } },
                                 onAddTransaction = {
                                     editingRecord = null
@@ -137,7 +140,6 @@ class MainActivity : ComponentActivity() {
                             "LIST" -> TransactionsScreen(
                                 records = recordsState.value.sortedByDescending { it.timestamp },
                                 accounts = accountsState.value,
-                                categories = categoriesState.value,
                                 onBack = { currentScreen = "HOME" },
                                 onEdit = { record ->
                                     editingRecord = record
@@ -212,12 +214,8 @@ private suspend fun applyTransactionEffect(dao: WalletDao, accounts: List<Accoun
     val fromAccount = accounts.find { it.id == record.accountId } ?: return
 
     when (record.type) {
-        "EXPENSE" -> {
-            dao.updateAccount(fromAccount.copy(balance = fromAccount.balance - record.amount))
-        }
-        "INCOME" -> {
-            dao.updateAccount(fromAccount.copy(balance = fromAccount.balance + record.amount))
-        }
+        "EXPENSE" -> dao.updateAccount(fromAccount.copy(balance = fromAccount.balance - record.amount))
+        "INCOME" -> dao.updateAccount(fromAccount.copy(balance = fromAccount.balance + record.amount))
         "TRANSFER" -> {
             val target = accounts.find { it.id == record.targetAccountId } ?: return
             if (record.accountId != record.targetAccountId) {
@@ -232,12 +230,8 @@ private suspend fun revertTransactionEffect(dao: WalletDao, accounts: List<Accou
     val fromAccount = accounts.find { it.id == record.accountId } ?: return
 
     when (record.type) {
-        "EXPENSE" -> {
-            dao.updateAccount(fromAccount.copy(balance = fromAccount.balance + record.amount))
-        }
-        "INCOME" -> {
-            dao.updateAccount(fromAccount.copy(balance = fromAccount.balance - record.amount))
-        }
+        "EXPENSE" -> dao.updateAccount(fromAccount.copy(balance = fromAccount.balance + record.amount))
+        "INCOME" -> dao.updateAccount(fromAccount.copy(balance = fromAccount.balance - record.amount))
         "TRANSFER" -> {
             val target = accounts.find { it.id == record.targetAccountId } ?: return
             if (record.accountId != record.targetAccountId) {
@@ -270,6 +264,7 @@ fun formatDate(timestamp: Long): String {
     return sdf.format(Date(timestamp))
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletHomeScreen(
     totalBalance: Long,
@@ -277,7 +272,6 @@ fun WalletHomeScreen(
     expense: Long,
     accounts: List<AccountEntity>,
     records: List<RecordEntity>,
-    categories: List<CategoryEntity>,
     onOpenDrawer: () -> Unit,
     onAddTransaction: () -> Unit,
     onAddAccount: (String, Long, Long) -> Unit,
@@ -370,6 +364,7 @@ fun WalletHomeScreen(
                     Text("Add", color = Color(0xFF5B8CFF))
                 }
             }
+
             Spacer(Modifier.height(8.dp))
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -579,11 +574,11 @@ fun TransactionRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionsScreen(
     records: List<RecordEntity>,
     accounts: List<AccountEntity>,
-    categories: List<CategoryEntity>,
     onBack: () -> Unit,
     onEdit: (RecordEntity) -> Unit,
     onDelete: (RecordEntity) -> Unit
@@ -623,6 +618,7 @@ fun TransactionsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoriesScreen(
     categories: List<CategoryEntity>,
@@ -692,11 +688,7 @@ fun CategoriesScreen(
 }
 
 @Composable
-fun CategoryCard(
-    category: CategoryEntity,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
+fun CategoryCard(category: CategoryEntity, onEdit: () -> Unit, onDelete: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF171E2E)),
         shape = RoundedCornerShape(16.dp),
@@ -733,18 +725,20 @@ fun CategoryCard(
 }
 
 @Composable
-fun CategoryEditorDialog(
-    category: CategoryEntity?,
-    onDismiss: () -> Unit,
-    onSave: (CategoryEntity) -> Unit
-) {
+fun CategoryEditorDialog(category: CategoryEntity?, onDismiss: () -> Unit, onSave: (CategoryEntity) -> Unit) {
     var name by remember(category?.id) { mutableStateOf(category?.name ?: "") }
     var iconName by remember(category?.id) { mutableStateOf(category?.iconName ?: "attach_money") }
     var color by remember(category?.id) { mutableStateOf(category?.colorHex ?: 0xFF5B8CFF) }
     var isExpense by remember(category?.id) { mutableStateOf(category?.isExpense ?: true) }
 
-    val iconOptions = listOf("attach_money", "shopping_cart", "restaurant", "home", "school", "card_giftcard", "flight", "directions_car", "medical_services", "phone_iphone", "wifi", "trending_up")
-    val colorOptions = listOf(0xFF5B8CFF, 0xFF2ECF8A, 0xFFEF5350, 0xFFFFB300, 0xFF9C27B0, 0xFF00BCD4, 0xFFFF7043, 0xFF8BC34A)
+    val iconOptions = listOf(
+        "attach_money", "shopping_cart", "restaurant", "home", "school", "card_giftcard",
+        "flight", "directions_car", "medical_services", "phone_iphone", "wifi", "trending_up"
+    )
+    val colorOptions = listOf(
+        0xFF5B8CFF, 0xFF2ECF8A, 0xFFEF5350, 0xFFFFB300, 0xFF9C27B0,
+        0xFF00BCD4, 0xFFFF7043, 0xFF8BC34A
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -823,6 +817,7 @@ fun CategoryEditorDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionEditorScreen(
     initialRecord: RecordEntity?,
@@ -835,9 +830,17 @@ fun TransactionEditorScreen(
     BackHandler { onBack() }
 
     val defaultType = initialRecord?.type ?: "EXPENSE"
-    val defaultCategory = categories.find { it.id == initialRecord?.categoryId } ?: categories.firstOrNull() ?: CategoryEntity(name = "General")
-    val selectedAccountId = remember(initialRecord?.id) { mutableStateOf(initialRecord?.accountId ?: accounts.firstOrNull()?.id ?: 1) }
-    val targetAccountId = remember(initialRecord?.id) { mutableStateOf(initialRecord?.targetAccountId ?: accounts.getOrNull(1)?.id ?: (accounts.firstOrNull()?.id ?: 1)) }
+    val defaultCategory = categories.find { it.id == initialRecord?.categoryId }
+        ?: categories.firstOrNull()
+        ?: CategoryEntity(name = "General")
+
+    val selectedAccountId = remember(initialRecord?.id) {
+        mutableStateOf(initialRecord?.accountId ?: accounts.firstOrNull()?.id ?: 1)
+    }
+    val targetAccountId = remember(initialRecord?.id) {
+        mutableStateOf(initialRecord?.targetAccountId ?: accounts.getOrNull(1)?.id ?: (accounts.firstOrNull()?.id ?: 1))
+    }
+
     var amountText by remember(initialRecord?.id) { mutableStateOf((initialRecord?.amount ?: 0L).toString()) }
     var note by remember(initialRecord?.id) { mutableStateOf(initialRecord?.note ?: "") }
     var selectedType by remember(initialRecord?.id) { mutableStateOf(defaultType) }
@@ -904,16 +907,23 @@ fun TransactionEditorScreen(
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
                 if (selectedType == "TRANSFER") {
-                    SelectorLabel("From", accounts.find { it.id == selectedAccountId.value }?.name ?: "Select") { showAccountDialog = true }
-                    SelectorLabel("To", accounts.find { it.id == targetAccountId.value }?.name ?: "Select") { showTargetDialog = true }
+                    SelectorLabel("From", accounts.find { it.id == selectedAccountId.value }?.name ?: "Select") {
+                        showAccountDialog = true
+                    }
+                    SelectorLabel("To", accounts.find { it.id == targetAccountId.value }?.name ?: "Select") {
+                        showTargetDialog = true
+                    }
                 } else {
-                    SelectorLabel("Account", accounts.find { it.id == selectedAccountId.value }?.name ?: "Select") { showAccountDialog = true }
-                    SelectorLabel("Category", selectedCategory.name) { showCategoryDialog = true }
+                    SelectorLabel("Account", accounts.find { it.id == selectedAccountId.value }?.name ?: "Select") {
+                        showAccountDialog = true
+                    }
+                    SelectorLabel("Category", selectedCategory.name) {
+                        showCategoryDialog = true
+                    }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
-
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
@@ -950,7 +960,6 @@ fun TransactionEditorScreen(
             }
 
             Spacer(Modifier.height(16.dp))
-
             CalculatorPad(
                 onNumberClick = { key ->
                     amountText = if (amountText == "0") key else amountText + key
@@ -1138,6 +1147,7 @@ fun CalculatorPad(
                 for (key in row) {
                     val isAction = key in listOf("C", "÷", "×", "-", "+", "DEL", "=")
                     val bgColor = if (key == "=") Color(0xFF5B8CFF) else Color.Transparent
+
                     Box(
                         modifier = Modifier
                             .weight(1f)
