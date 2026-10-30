@@ -1035,7 +1035,7 @@ fun TransactionEditorScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showTargetDialog = false }) { Text("Close") } }
+            confirmButton = { TextButton(onClick = { showTargetDialog = false }) { Text(\"Close\") } }
         )
     }
 
@@ -1071,7 +1071,7 @@ fun TransactionEditorScreen(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showCategoryDialog = false }) { Text("Close") } }
+            confirmButton = { TextButton(onClick = { showCategoryDialog = false }) { Text(\"Close\") } }
         )
     }
 }
@@ -1100,18 +1100,18 @@ fun SelectorLabel(label: String, value: String, onClick: () -> Unit) {
 }
 
 fun iconFor(name: String): ImageVector = when (name) {
-    "home" -> Icons.Default.Home
-    "restaurant" -> Icons.Default.Restaurant
-    "shopping_cart" -> Icons.Default.ShoppingCart
-    "flight" -> Icons.Default.Flight
-    "directions_car" -> Icons.Default.DirectionsCar
-    "medical_services" -> Icons.Default.MedicalServices
-    "school" -> Icons.Default.School
-    "card_giftcard" -> Icons.Default.CardGiftcard
-    "attach_money" -> Icons.Default.AttachMoney
-    "trending_up" -> Icons.Default.TrendingUp
-    "wifi" -> Icons.Default.Wifi
-    "phone_iphone" -> Icons.Default.PhoneIphone
+    \"home\" -> Icons.Default.Home
+    \"restaurant\" -> Icons.Default.Restaurant
+    \"shopping_cart\" -> Icons.Default.ShoppingCart
+    \"flight\" -> Icons.Default.Flight
+    \"directions_car\" -> Icons.Default.DirectionsCar
+    \"medical_services\" -> Icons.Default.MedicalServices
+    \"school\" -> Icons.Default.School
+    \"card_giftcard\" -> Icons.Default.CardGiftcard
+    \"attach_money\" -> Icons.Default.AttachMoney
+    \"trending_up\" -> Icons.Default.TrendingUp
+    \"wifi\" -> Icons.Default.Wifi
+    \"phone_iphone\" -> Icons.Default.PhoneIphone
     else -> Icons.Default.Category
 }
 
@@ -1134,19 +1134,19 @@ fun CalculatorPad(
     onEqualClick: () -> Unit
 ) {
     val rows = listOf(
-        listOf("C", "÷", "×", "DEL"),
-        listOf("7", "8", "9", "-"),
-        listOf("4", "5", "6", "+"),
-        listOf("1", "2", "3", "="),
-        listOf("00", "0", "000", "=")
+        listOf(\"C\", \"÷\", \"×\", \"DEL\"),
+        listOf(\"7\", \"8\", \"9\", \"-\"), 
+        listOf(\"4\", \"5\", \"6\", \"+\"),
+        listOf(\"1\", \"2\", \"3\", \"=\"), 
+        listOf(\"00\", \"0\", \"000\", \"=\")
     )
 
     Column(modifier = Modifier.fillMaxWidth().background(Color(0xFF111827))) {
         for (row in rows) {
             Row(modifier = Modifier.fillMaxWidth().height(56.dp)) {
                 for (key in row) {
-                    val isAction = key in listOf("C", "÷", "×", "-", "+", "DEL", "=")
-                    val bgColor = if (key == "=") Color(0xFF5B8CFF) else Color.Transparent
+                    val isAction = key in listOf(\"C\", \"÷\", \"×\", \"-\", \"+\", \"DEL\", \"=\")
+                    val bgColor = if (key == \"=\") Color(0xFF5B8CFF) else Color.Transparent
 
                     Box(
                         modifier = Modifier
@@ -1155,9 +1155,9 @@ fun CalculatorPad(
                             .background(bgColor)
                             .clickable {
                                 when (key) {
-                                    "DEL" -> onDeleteClick()
-                                    "C" -> onClearClick()
-                                    "=" -> onEqualClick()
+                                    \"DEL\" -> onDeleteClick()
+                                    \"C\" -> onClearClick()
+                                    \"=\" -> onEqualClick()
                                     else -> onNumberClick(key)
                                 }
                             },
@@ -1165,7 +1165,7 @@ fun CalculatorPad(
                     ) {
                         Text(
                             text = key,
-                            color = if (isAction && key != "=") Color(0xFF8CCBFF) else Color.White,
+                            color = if (isAction && key != \"=\") Color(0xFF8CCBFF) else Color.White,
                             fontSize = 20.sp,
                             fontWeight = if (isAction) FontWeight.Bold else FontWeight.Normal
                         )
@@ -1178,22 +1178,22 @@ fun CalculatorPad(
 
 fun evaluateMath(expr: String): Long {
     try {
-        val sanitized = expr.replace("×", "*").replace("÷", "/")
-        val parts = sanitized.split(Regex("(?<=[-+*/])|(?=[-+*/])"))
+        val sanitized = expr.replace(\"×\", \"*\").replace(\"÷\", \"/")
+        val parts = sanitized.split(Regex(\"(?<=[-+*/])|(?=[-+*/])\"))
         if (parts.isEmpty()) return 0L
         var result = parts[0].toLongOrNull() ?: 0L
-        var currentOp = ""
+        var currentOp = \"\"
         for (i in 1 until parts.size) {
             val part = parts[i]
-            if (part in listOf("+", "-", "*", "/")) {
+            if (part in listOf(\"+\", \"-\", \"*\", \"/\")) {
                 currentOp = part
             } else {
                 val num = part.toLongOrNull() ?: 0L
                 when (currentOp) {
-                    "+" -> result += num
-                    "-" -> result -= num
-                    "*" -> result *= num
-                    "/" -> if (num != 0L) result /= num
+                    \"+\" -> result += num
+                    \"-\" -> result -= num
+                    \"*\" -> result *= num
+                    \"/\" -> if (num != 0L) result /= num
                 }
             }
         }
