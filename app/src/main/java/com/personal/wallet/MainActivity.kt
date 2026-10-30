@@ -3,7 +3,6 @@ package com.personal.wallet
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -19,24 +18,39 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.personal.wallet.InitialPersonalData.defaultAccounts
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.collectLatest
 import java.text.NumberFormat
-import java.util.*
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val database = AppDatabase.getDatabase(applicationContext, lifecycleScope)
+        val dao = database.walletDao()
+
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
+                val accountsState = remember { mutableStateOf(InitialPersonalData.defaultAccounts) }
                 var hideAmounts by remember { mutableStateOf(false) }
-                
+
+                LaunchedEffect(Unit) {
+                    dao.getAllAccounts().collectLatest { dbAccounts ->
+                        if (dbAccounts.isNotEmpty()) {
+                            accountsState.value = dbAccounts
+                        }
+                    }
+                }
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color(0xFF121212)
                 ) {
-                    MainWalletScreen(
+                    WalletMainScreen(
+                        accounts = accountsState.value,
                         hideAmounts = hideAmounts,
-                        onToggleHideAmounts = { hideAmounts = !hideAmounts }
+                        onToggleHide = { hideAmounts = !hideAmounts }
                     )
                 }
             }
@@ -51,18 +65,27 @@ fun formatIrr(amount: Long, hide: Boolean): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainWalletScreen(hideAmounts: Boolean, onToggleHideAmounts: () -> Unit) {
-    var selectedTab by remember { mutableStateOf(0) }
-    
+fun WalletMainScreen(
+    accounts: List<AccountEntity>,
+    hideAmounts: Boolean,
+    onToggleHide: () -> Unit
+) {
     Scaffold(
+        containerColor = Color(0xFF121212),
         topBar = {
             TopAppBar(
                 title = { Text("Home", color = Color.White) },
+                navigationIcon = {
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
+                    }
+                },
                 actions = {
-                    IconButton(onClick = onToggleHideAmounts) {
+                    IconButton(onClick = onToggleHide) {
+                        // در اینجا آیکون قفل جایگزین چشم شد
                         Icon(
-                            imageVector = if (hideAmounts) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = "Toggle Hide Amounts",
+                            imageVector = if (hideAmounts) Icons.Default.Lock else Icons.Default.CheckCircle,
+                            contentDescription = "Toggle Amounts",
                             tint = Color.White
                         )
                     }
@@ -72,7 +95,7 @@ fun MainWalletScreen(hideAmounts: Boolean, onToggleHideAmounts: () -> Unit) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* ثبت تراکنش جدید */ },
+                onClick = {},
                 containerColor = Color(0xFF4285F4),
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
@@ -87,29 +110,33 @@ fun MainWalletScreen(hideAmounts: Boolean, onToggleHideAmounts: () -> Unit) {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // تب‌های بالا
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                TextButton(onClick = { selectedTab = 0 }) {
-                    Text("Accounts", color = if (selectedTab == 0) Color.White else Color.Gray, fontWeight = FontWeight.Bold)
-                }
-                TextButton(onClick = { selectedTab = 1 }) {
-                    Text("Budgets & Goals", color = if (selectedTab == 1) Color.White else Color.Gray, fontWeight = FontWeight.Bold)
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "My Accounts in Wallet",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = Color(0xFF4285F4)
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text("My Accounts in Wallet", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // نمایش کارت حساب‌های ملت، ملی، تجارت
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.height(150.dp)
             ) {
-                items(defaultAccounts) { account ->
+                items(accounts, key = { it.id }) { account ->
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(account.colorHex)),
                         shape = RoundedCornerShape(10.dp)
@@ -124,8 +151,19 @@ fun MainWalletScreen(hideAmounts: Boolean, onToggleHideAmounts: () -> Unit) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Icon(Icons.Default.AccountBalanceWallet, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                Text(account.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                // در اینجا آیکون خانه جایگزین کیف پول شد
+                                Icon(
+                                    imageVector = Icons.Default.Home,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = account.name,
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                             Text(
                                 text = formatIrr(account.balance, hideAmounts),
@@ -135,6 +173,35 @@ fun MainWalletScreen(hideAmounts: Boolean, onToggleHideAmounts: () -> Unit) {
                             )
                         }
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {},
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Account Detail", color = Color.White, fontSize = 12.sp)
+                }
+                OutlinedButton(
+                    onClick = {},
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.List,
+                        contentDescription = null,
+                        tint = Color(0xFF4285F4),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Records", color = Color.White, fontSize = 12.sp)
                 }
             }
         }
