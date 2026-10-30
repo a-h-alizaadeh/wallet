@@ -21,17 +21,21 @@ data class AccountEntity(
 @Entity(tableName = "categories")
 data class CategoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val name: String
+    val name: String,
+    val iconName: String = "attach_money",
+    val colorHex: Long = 0xFF5B8CFF,
+    val isExpense: Boolean = true
 )
 
 @Entity(tableName = "records")
 data class RecordEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val amount: Long,
-    val type: String, // EXPENSE, INCOME, TRANSFER
+    val type: String,
     val accountId: Int,
     val targetAccountId: Int? = null,
-    val categoryName: String,
+    val categoryId: Int? = null,
+    val categoryName: String = "",
     val note: String = "",
     val timestamp: Long = System.currentTimeMillis()
 )
@@ -53,7 +57,7 @@ interface WalletDao {
     @Delete
     suspend fun deleteAccount(account: AccountEntity)
 
-    @Query("SELECT * FROM categories")
+    @Query("SELECT * FROM categories ORDER BY id ASC")
     fun getAllCategories(): Flow<List<CategoryEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -62,17 +66,30 @@ interface WalletDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategory(category: CategoryEntity)
 
+    @Update
+    suspend fun updateCategory(category: CategoryEntity)
+
+    @Delete
+    suspend fun deleteCategory(category: CategoryEntity)
+
     @Query("SELECT * FROM records ORDER BY timestamp DESC")
     fun getAllRecords(): Flow<List<RecordEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: RecordEntity)
-    
+
+    @Update
+    suspend fun updateRecord(record: RecordEntity)
+
     @Delete
     suspend fun deleteRecord(record: RecordEntity)
 }
 
-@Database(entities = [AccountEntity::class, CategoryEntity::class, RecordEntity::class], version = 2, exportSchema = false)
+@Database(
+    entities = [AccountEntity::class, CategoryEntity::class, RecordEntity::class],
+    version = 3,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun walletDao(): WalletDao
 
@@ -87,9 +104,9 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "wallet_secure_v2.db"
                 )
-                .fallbackToDestructiveMigration()
-                .addCallback(DatabaseCallback(scope))
-                .build()
+                    .fallbackToDestructiveMigration()
+                    .addCallback(DatabaseCallback(scope))
+                    .build()
                 INSTANCE = instance
                 instance
             }
@@ -103,7 +120,14 @@ abstract class AppDatabase : RoomDatabase() {
                 scope.launch(Dispatchers.IO) {
                     database.walletDao().insertAllAccounts(InitialPersonalData.defaultAccounts)
                     database.walletDao().insertAllCategories(
-                        InitialPersonalData.defaultCategories.map { CategoryEntity(name = it) }
+                        InitialPersonalData.defaultCategories.map { name ->
+                            CategoryEntity(
+                                name = name,
+                                iconName = "attach_money",
+                                colorHex = 0xFF5B8CFF,
+                                isExpense = true
+                            )
+                        }
                     )
                 }
             }
