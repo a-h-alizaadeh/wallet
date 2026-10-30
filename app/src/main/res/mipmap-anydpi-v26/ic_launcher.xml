@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- پس‌زمینه دارک و مشکی مات -->
+    <background>
+        <color android:color="#1E1E1E"/>
+    </background>
+    <!-- لایه رویی: طرح کیف پول -->
+    <foreground>
+        <bitmap
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            android:src="@drawable/ic_wallet_logo"/>
+    </foreground>
+</adaptive-icon>
