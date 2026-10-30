@@ -18,12 +18,19 @@ data class AccountEntity(
     val sortOrder: Int = 0
 )
 
+@Entity(tableName = "categories")
+data class CategoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String
+)
+
 @Entity(tableName = "records")
 data class RecordEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val amount: Long,
-    val type: String, // INCOME, EXPENSE, TRANSFER
-    val accountName: String,
+    val type: String, // EXPENSE, INCOME, TRANSFER
+    val accountId: Int,
+    val targetAccountId: Int? = null,
     val categoryName: String,
     val note: String = "",
     val timestamp: Long = System.currentTimeMillis()
@@ -35,19 +42,37 @@ interface WalletDao {
     fun getAllAccounts(): Flow<List<AccountEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAccount(account: AccountEntity)
+    suspend fun insertAllAccounts(accounts: List<AccountEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAllAccounts(accounts: List<AccountEntity>)
+    suspend fun insertAccount(account: AccountEntity)
+
+    @Update
+    suspend fun updateAccount(account: AccountEntity)
+
+    @Delete
+    suspend fun deleteAccount(account: AccountEntity)
+
+    @Query("SELECT * FROM categories")
+    fun getAllCategories(): Flow<List<CategoryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllCategories(categories: List<CategoryEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategory(category: CategoryEntity)
 
     @Query("SELECT * FROM records ORDER BY timestamp DESC")
     fun getAllRecords(): Flow<List<RecordEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: RecordEntity)
+    
+    @Delete
+    suspend fun deleteRecord(record: RecordEntity)
 }
 
-@Database(entities = [AccountEntity::class, RecordEntity::class], version = 1, exportSchema = false)
+@Database(entities = [AccountEntity::class, CategoryEntity::class, RecordEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun walletDao(): WalletDao
 
@@ -60,8 +85,9 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "wallet_secure.db"
+                    "wallet_secure_v2.db"
                 )
+                .fallbackToDestructiveMigration()
                 .addCallback(DatabaseCallback(scope))
                 .build()
                 INSTANCE = instance
@@ -70,14 +96,15 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 
-    private class DatabaseCallback(
-        private val scope: CoroutineScope
-    ) : RoomDatabase.Callback() {
+    private class DatabaseCallback(private val scope: CoroutineScope) : RoomDatabase.Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
             INSTANCE?.let { database ->
                 scope.launch(Dispatchers.IO) {
                     database.walletDao().insertAllAccounts(InitialPersonalData.defaultAccounts)
+                    database.walletDao().insertAllCategories(
+                        InitialPersonalData.defaultCategories.map { CategoryEntity(name = it) }
+                    )
                 }
             }
         }
@@ -91,9 +118,18 @@ object InitialPersonalData {
         AccountEntity(3, "تجارت", "Cash", 62093773L, 0xFF1976D2, 3)
     )
 
-    val defaultLabels = listOf(
-        "بهداشت دندان", "دندانپزشکی", "لوازم التحریر", "کتاب شخصی",
-        "کتاب درسی ملیکا", "کتاب زبان", "خرج خونه", "حقوق",
-        "کارت مترو", "پول نقد", "بسته اینترنت"
+    val defaultCategories = listOf(
+        "بهداشت دندان",
+        "دندانپزشکی",
+        "لوازم التحریر",
+        "کتاب شخصی",
+        "کتاب درسی ملیکا",
+        "کتاب زبان",
+        "خرج خونه",
+        "حقوق",
+        "کارت مترو",
+        "پول نقد",
+        "بسته اینترنت",
+        "عمومی"
     )
 }
